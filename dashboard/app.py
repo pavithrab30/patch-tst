@@ -299,18 +299,140 @@ def get_predictions(crop: str) -> dict | None:
     return {k: d[k] for k in d.files}
 
 def run_forecast(crop: str, field_id: str) -> dict:
-    import subprocess
-    worker = Path(__file__).parent / "worker.py"
-    r = subprocess.run(
-        [sys.executable, str(worker), crop, field_id],
-        capture_output=True, text=True, cwd=str(ROOT), timeout=120,
+    """
+    Cloud-safe forecast: reads from pre-saved predictions.npz and processed CSV.
+    No torch required — all inference was done during training and saved to disk.
+    """
+    import json as _json
+
+    # ── Load processed field data ─────────────────────────────────────
+    df = pd.read_csv(
+        PROCESSED_DIR / crop.lower() / f"{crop.lower()}_processed.csv",
+        parse_dates=["date"],
     )
-    if r.returncode != 0:
-        raise RuntimeError(r.stderr.strip() or "Worker crashed")
-    payload = json.loads(r.stdout.strip())
-    if not payload.get("ok"):
-        raise RuntimeError(payload.get("error", "Worker error"))
-    return payload
+    field_df = df[df["field_id"] == field_id].sort_values("date").reset_index(drop=True)
+    if field_df.empty:
+        raise RuntimeError(f"Field {field_id} not found for crop {crop}")
+
+    latest = field_df.iloc[-1]
+    cur_conditions = {col: float(latest[col]) for col in FEATURE_COLS}
+
+    # ── Load pre-saved predictions ────────────────────────────────────
+    pred_data = get_predictions(crop)
+    if pred_data is None:
+        raise RuntimeError("predictions.npz not found — run evaluate.py first")
+
+    feat_cols = list(pred_data["feature_cols"])
+    field_ids = list(pred_data["field_ids"])
+
+    # Find prediction windows for this field
+    matching = [i for i, fid in enumerate(field_ids) if fid == field_id]
+    if not matching:
+        matching = list(range(min(7, len(field_ids))))  # fallback: first windows
+
+    # Use the last matching window (most recent)
+    win_idx = matching[-1]
+    pred_7  = pred_data["pred"][win_idx]    # shape (7, 8)
+    start   = str(pred_data["pred_starts"][win_idx])
+
+    # Build forecast rows (7 days)
+    import pandas as _pd
+    forecast_dates = pd.date_range(start=start, periods=7, freq="D")
+    forecast_rows  = []
+    for i in range(7):
+        row = {"date": str(forecast_dates[i].date())}
+        for j, feat in enumerate(feat_cols):
+            row[feat] = float(pred_7[i, j])
+        forecast_rows.append(row)
+
+    # ── Suitability assessment (rule-based, no torch) ─────────────────
+    meta_path = PROCESSED_DIR / crop.lower() / "metadata.json"
+    meta      = _json.loads(meta_path.read_text())
+    thresholds = meta.get("thresholds", {})
+
+    feature_scores = {}
+    reasons        = []
+    for feat in feat_cols:
+        if feat not in thresholds:
+            continue
+        thr   = thresholds[feat]
+        vals  = [row[feat] for row in forecast_rows]
+        mean  = float(np.mean(vals))
+        yp50  = thr.get("yes_p50", mean)
+        np50  = thr.get("no_p50")
+
+        if np50 is None:
+            dist = abs(mean - yp50)
+            spr  = max(thr.get("yes_p75", yp50) - thr.get("yes_p25", yp50), 1e-6)
+            score = max(0.0, 1.0 - dist / (2 * spr))
+        else:
+            if yp50 > np50:
+                score = max(0.0, min(1.0, (mean - np50) / max(yp50 - np50, 1e-6)))
+            else:
+                score = max(0.0, min(1.0, (np50 - mean) / max(np50 - yp50, 1e-6)))
+
+        feature_scores[feat] = {"mean": mean, "score": score}
+        if score >= 0.65:
+            reasons.append(f"{feat}={mean:.2f} within suitable range (Yes median={yp50:.2f})")
+        elif score >= 0.35:
+            reasons.append(f"{feat}={mean:.2f} is borderline (Yes={yp50:.2f}, No={np50})")
+        else:
+            reasons.append(f"{feat}={mean:.2f} aligns with unsuitable conditions (No median={np50})")
+
+    avg_score = float(np.mean([v["score"] for v in feature_scores.values()])) if feature_scores else 0.5
+    status    = "SUITABLE" if avg_score >= 0.65 else ("CAUTION" if avg_score >= 0.40 else "NOT SUITABLE")
+
+    assessment = {
+        "status": status,
+        "confidence_score": avg_score,
+        "feature_scores": feature_scores,
+        "reasons": reasons,
+    }
+
+    # ── Build recommendation ──────────────────────────────────────────
+    notes = []
+    avg_sm   = float(np.mean([r.get("soil_moisture", 0) for r in forecast_rows]))
+    avg_rain = float(np.mean([r.get("rainfall", 0)      for r in forecast_rows]))
+    if avg_sm < float(np.median([r.get("soil_moisture", 0) for r in forecast_rows])) * 0.85:
+        notes.append(f"Forecast soil moisture ({avg_sm:.1f}%) trending low — monitor irrigation needs.")
+    if avg_rain > float(np.quantile([r.get("rainfall", 0) for r in forecast_rows], 0.75)):
+        notes.append(f"Elevated rainfall expected ({avg_rain:.1f} mm avg) — check drainage and pest risk.")
+    if status == "NOT SUITABLE":
+        notes.append("Field suitability for this crop is unfavorable based on forecast vs training-derived thresholds.")
+    elif status == "CAUTION":
+        notes.append("Mixed signals — some forecast variables align with unsuitable historical conditions.")
+
+    recommendation = {
+        "status": status,
+        "confidence_score": avg_score,
+        "reasons": reasons[:5],
+        "irrigation_advice": str(latest.get("irrigation_advice", "Monitor soil moisture")),
+        "fertilizer_advice": str(latest.get("fertilizer_advice", "Follow standard schedule")),
+        "pest_risk":         str(latest.get("pest_risk", "Low")),
+        "notes": notes,
+    }
+
+    context = {
+        "field_id":          field_id,
+        "crop":              crop,
+        "soil_type":         str(latest.get("soil_type", "—")),
+        "district":          str(latest.get("district", "—")),
+        "latest_date":       str(latest["date"].date()),
+        "current_conditions": cur_conditions,
+        "suitability_score": float(latest.get("suitability_score", 0)),
+        "crop_suitable":     str(latest.get("crop_suitable", "—")),
+        "irrigation_advice": str(latest.get("irrigation_advice", "—")),
+        "fertilizer_advice": str(latest.get("fertilizer_advice", "—")),
+        "pest_risk":         str(latest.get("pest_risk", "—")),
+    }
+
+    return {
+        "ok":             True,
+        "context":        context,
+        "forecast":       forecast_rows,
+        "assessment":     assessment,
+        "recommendation": recommendation,
+    }
 
 def build_advisories(rec: dict, ctx: dict, forecast: list[dict]) -> dict:
     crop      = ctx.get("crop", "crop")
