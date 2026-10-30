@@ -1,0 +1,23 @@
+{
+  "crop": "Rice",
+  "model": "PatchTST",
+  "seq_len": 30,
+  "pred_len": 7,
+  "label_len": 7,
+  "feature_columns": [
+    "temperature",
+    "humidity",
+    "soil_moisture",
+    "ph",
+    "N",
+    "P",
+    "K",
+    "rainfall"
+  ],
+  "train_samples": 1095,
+  "val_samples": 240,
+  "test_samples": 250,
+  "best_val_loss": 0.9676561504602432,
+  "final_train_loss": 0.9534178052629744,
+  "epochs_trained": 17
+}

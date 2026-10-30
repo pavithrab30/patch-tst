@@ -1,0 +1,231 @@
+{
+  "dataset_path": "C:\\Users\\Pavithra B\\OneDrive\\Desktop\\patch\\patchtst\\dataset\\AgriField-Manipur_v2.csv",
+  "inspection": {
+    "rows": 94900,
+    "columns": [
+      "date",
+      "field_id",
+      "district",
+      "lat",
+      "lon",
+      "crop",
+      "temperature",
+      "humidity",
+      "soil_moisture",
+      "soil_type",
+      "ph",
+      "N",
+      "P",
+      "K",
+      "rainfall",
+      "suitability_score",
+      "crop_suitable",
+      "irrigation_advice",
+      "fertilizer_advice",
+      "pest_risk"
+    ],
+    "dtypes": {
+      "date": "object",
+      "field_id": "object",
+      "district": "object",
+      "lat": "float64",
+      "lon": "float64",
+      "crop": "object",
+      "temperature": "float64",
+      "humidity": "float64",
+      "soil_moisture": "float64",
+      "soil_type": "object",
+      "ph": "float64",
+      "N": "int64",
+      "P": "int64",
+      "K": "int64",
+      "rainfall": "float64",
+      "suitability_score": "float64",
+      "crop_suitable": "object",
+      "irrigation_advice": "object",
+      "fertilizer_advice": "object",
+      "pest_risk": "object"
+    },
+    "missing_values": {
+      "date": 0,
+      "field_id": 0,
+      "district": 0,
+      "lat": 0,
+      "lon": 0,
+      "crop": 0,
+      "temperature": 0,
+      "humidity": 0,
+      "soil_moisture": 0,
+      "soil_type": 0,
+      "ph": 0,
+      "N": 0,
+      "P": 0,
+      "K": 0,
+      "rainfall": 0,
+      "suitability_score": 0,
+      "crop_suitable": 0,
+      "irrigation_advice": 0,
+      "fertilizer_advice": 0,
+      "pest_risk": 0
+    },
+    "duplicate_field_date": 0,
+    "date_range": {
+      "min": "2024-12-01",
+      "max": "2025-11-30"
+    },
+    "crops": {
+      "Rice": 1825,
+      "Maize": 1825,
+      "Lemon": 1825,
+      "Jackfruit": 1825,
+      "Ginger": 1825,
+      "Turmeric": 1825,
+      "Garlic": 1825,
+      "Chilli (other)": 1825,
+      "Coriander": 1825,
+      "Mint": 1825,
+      "Fenugreek": 1825,
+      "Amaranth": 1825,
+      "Mustard greens": 1825,
+      "Celosia": 1825,
+      "Soybean": 1825,
+      "Black gram": 1825,
+      "Green gram": 1825,
+      "Chickpea": 1825,
+      "Cowpea": 1825,
+      "Lentil": 1825,
+      "Sesame": 1825,
+      "Groundnut": 1825,
+      "Potato": 1825,
+      "Sweet potato": 1825,
+      "Yam": 1825,
+      "Strawberry": 1825,
+      "Passion fruit": 1825,
+      "Mango": 1825,
+      "Okra": 1825,
+      "Finger millet": 1825,
+      "Pearl millet": 1825,
+      "Tomato": 1825,
+      "Brinjal": 1825,
+      "Cabbage": 1825,
+      "Cauliflower": 1825,
+      "Carrot": 1825,
+      "Radish": 1825,
+      "French bean": 1825,
+      "Pea": 1825,
+      "Spinach": 1825,
+      "Guava": 1825,
+      "Lettuce": 1825,
+      "Pumpkin": 1825,
+      "Bottle gourd": 1825,
+      "Ridge gourd": 1825,
+      "King Chilli": 1825,
+      "Bitter gourd": 1825,
+      "Banana": 1825,
+      "Orange": 1825,
+      "Papaya": 1825,
+      "Pineapple": 1825,
+      "Taro": 1825
+    },
+    "soil_types": {
+      "Alluvial": 31025,
+      "Clay Loam": 27375,
+      "Sandy Loam": 18980,
+      "Red Loam": 17520
+    },
+    "field_id_count": 260,
+    "crop_suitable": {
+      "Yes": 82264,
+      "No": 12636
+    }
+  },
+  "crops": {
+    "Rice": {
+      "processed_csv": "C:\\Users\\Pavithra B\\OneDrive\\Desktop\\patch\\patchtst\\processed\\rice\\rice_processed.csv",
+      "metadata": "C:\\Users\\Pavithra B\\OneDrive\\Desktop\\patch\\patchtst\\processed\\rice\\metadata.json",
+      "rows": 1825,
+      "fields": [
+        "F00001",
+        "F00053",
+        "F00105",
+        "F00157",
+        "F00209"
+      ],
+      "split": {
+        "train": [
+          "2024-12-01",
+          "2025-08-12"
+        ],
+        "val": [
+          "2025-08-13",
+          "2025-10-05"
+        ],
+        "test": [
+          "2025-10-06",
+          "2025-11-30"
+        ],
+        "train_end_idx": 255,
+        "val_end_idx": 309,
+        "total_days": 365
+      }
+    },
+    "Maize": {
+      "processed_csv": "C:\\Users\\Pavithra B\\OneDrive\\Desktop\\patch\\patchtst\\processed\\maize\\maize_processed.csv",
+      "metadata": "C:\\Users\\Pavithra B\\OneDrive\\Desktop\\patch\\patchtst\\processed\\maize\\metadata.json",
+      "rows": 1825,
+      "fields": [
+        "F00002",
+        "F00054",
+        "F00106",
+        "F00158",
+        "F00210"
+      ],
+      "split": {
+        "train": [
+          "2024-12-01",
+          "2025-08-12"
+        ],
+        "val": [
+          "2025-08-13",
+          "2025-10-05"
+        ],
+        "test": [
+          "2025-10-06",
+          "2025-11-30"
+        ],
+        "train_end_idx": 255,
+        "val_end_idx": 309,
+        "total_days": 365
+      }
+    },
+    "Tomato": {
+      "processed_csv": "C:\\Users\\Pavithra B\\OneDrive\\Desktop\\patch\\patchtst\\processed\\tomato\\tomato_processed.csv",
+      "metadata": "C:\\Users\\Pavithra B\\OneDrive\\Desktop\\patch\\patchtst\\processed\\tomato\\metadata.json",
+      "rows": 1825,
+      "fields": [
+        "F00005",
+        "F00057",
+        "F00109",
+        "F00161",
+        "F00213"
+      ],
+      "split": {
+        "train": [
+          "2024-12-01",
+          "2025-08-12"
+        ],
+        "val": [
+          "2025-08-13",
+          "2025-10-05"
+        ],
+        "test": [
+          "2025-10-06",
+          "2025-11-30"
+        ],
+        "train_end_idx": 255,
+        "val_end_idx": 309,
+        "total_days": 365
+      }
+    }
+  }
+}

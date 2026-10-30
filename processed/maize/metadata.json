@@ -1,0 +1,160 @@
+{
+  "crop": "Maize",
+  "rows": 1825,
+  "fields": [
+    "F00002",
+    "F00054",
+    "F00106",
+    "F00158",
+    "F00210"
+  ],
+  "per_field": {
+    "F00002": {
+      "rows": 365,
+      "date_min": "2024-12-01",
+      "date_max": "2025-11-30",
+      "soil_type": "Red Loam",
+      "district": "Imphal East"
+    },
+    "F00054": {
+      "rows": 365,
+      "date_min": "2024-12-01",
+      "date_max": "2025-11-30",
+      "soil_type": "Sandy Loam",
+      "district": "Imphal West"
+    },
+    "F00106": {
+      "rows": 365,
+      "date_min": "2024-12-01",
+      "date_max": "2025-11-30",
+      "soil_type": "Sandy Loam",
+      "district": "Thoubal"
+    },
+    "F00158": {
+      "rows": 365,
+      "date_min": "2024-12-01",
+      "date_max": "2025-11-30",
+      "soil_type": "Red Loam",
+      "district": "Bishnupur"
+    },
+    "F00210": {
+      "rows": 365,
+      "date_min": "2024-12-01",
+      "date_max": "2025-11-30",
+      "soil_type": "Sandy Loam",
+      "district": "Kakching"
+    }
+  },
+  "split": {
+    "train": [
+      "2024-12-01",
+      "2025-08-12"
+    ],
+    "val": [
+      "2025-08-13",
+      "2025-10-05"
+    ],
+    "test": [
+      "2025-10-06",
+      "2025-11-30"
+    ],
+    "train_end_idx": 255,
+    "val_end_idx": 309,
+    "total_days": 365
+  },
+  "feature_columns": [
+    "temperature",
+    "humidity",
+    "soil_moisture",
+    "ph",
+    "N",
+    "P",
+    "K",
+    "rainfall"
+  ],
+  "missing_after_filter": {
+    "temperature": 0,
+    "humidity": 0,
+    "soil_moisture": 0,
+    "ph": 0,
+    "N": 0,
+    "P": 0,
+    "K": 0,
+    "rainfall": 0
+  },
+  "thresholds": {
+    "temperature": {
+      "yes_p25": 25.005000000000003,
+      "yes_p50": 27.27,
+      "yes_p75": 29.57,
+      "no_p25": 25.205000000000002,
+      "no_p50": 27.72,
+      "no_p75": 29.917499999999997,
+      "overall_median": 27.34
+    },
+    "humidity": {
+      "yes_p25": 56.335,
+      "yes_p50": 62.29,
+      "yes_p75": 67.09,
+      "no_p25": 57.03,
+      "no_p50": 64.695,
+      "no_p75": 68.4525,
+      "overall_median": 62.53
+    },
+    "soil_moisture": {
+      "yes_p25": 95.0,
+      "yes_p50": 95.0,
+      "yes_p75": 95.0,
+      "no_p25": 3.0,
+      "no_p50": 3.0,
+      "no_p75": 3.0,
+      "overall_median": 95.0
+    },
+    "ph": {
+      "yes_p25": 5.52,
+      "yes_p50": 6.34,
+      "yes_p75": 7.11,
+      "no_p25": 5.3275,
+      "no_p50": 6.395,
+      "no_p75": 7.1825,
+      "overall_median": 6.35
+    },
+    "N": {
+      "yes_p25": 65.0,
+      "yes_p50": 79.0,
+      "yes_p75": 95.0,
+      "no_p25": 66.0,
+      "no_p50": 81.5,
+      "no_p75": 96.25,
+      "overall_median": 80.0
+    },
+    "P": {
+      "yes_p25": 28.0,
+      "yes_p50": 37.0,
+      "yes_p75": 47.0,
+      "no_p25": 30.0,
+      "no_p50": 38.0,
+      "no_p75": 45.0,
+      "overall_median": 37.0
+    },
+    "K": {
+      "yes_p25": 27.0,
+      "yes_p50": 39.0,
+      "yes_p75": 51.0,
+      "no_p25": 28.0,
+      "no_p50": 38.5,
+      "no_p75": 49.0,
+      "overall_median": 39.0
+    },
+    "rainfall": {
+      "yes_p25": 102.19,
+      "yes_p50": 158.6,
+      "yes_p75": 228.585,
+      "no_p25": 0.5774999999999999,
+      "no_p50": 1.0,
+      "no_p75": 1.5225,
+      "overall_median": 135.29
+    }
+  },
+  "processed_csv": "C:\\Users\\Pavithra B\\OneDrive\\Desktop\\patch\\patchtst\\processed\\maize\\maize_processed.csv"
+}

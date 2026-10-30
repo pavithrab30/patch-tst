@@ -1,0 +1,1412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgriField · PatchTST Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+  <style>
+    /* ── Reset & tokens ──────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d1117;
+      --surface:   #161b22;
+      --surface2:  #1f2937;
+      --border:    #30363d;
+      --green:     #3fb950;
+      --green-dim: #1a4731;
+      --amber:     #d29922;
+      --amber-dim: #3d2b00;
+      --red:       #f85149;
+      --red-dim:   #4a1515;
+      --blue:      #58a6ff;
+      --blue-dim:  #0c2a4a;
+      --purple:    #bc8cff;
+      --text:      #e6edf3;
+      --text-muted:#8b949e;
+      --radius:    12px;
+      --shadow:    0 4px 24px rgba(0,0,0,.45);
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Scrollbar ───────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ── Top nav ─────────────────────────────────────── */
+    nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 2rem;
+      height: 60px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 100;
+      backdrop-filter: blur(8px);
+    }
+    .nav-brand {
+      display: flex; align-items: center; gap: .6rem;
+      font-size: 1.15rem; font-weight: 700; letter-spacing: -.3px;
+    }
+    .nav-brand .leaf { font-size: 1.4rem; }
+    .nav-badge {
+      font-size: .65rem; font-weight: 600; letter-spacing: .5px;
+      background: var(--green-dim); color: var(--green);
+      border: 1px solid var(--green); border-radius: 20px;
+      padding: 2px 8px;
+    }
+    .nav-right { display: flex; align-items: center; gap: 1rem; }
+    .api-status {
+      font-size: .75rem; display: flex; align-items: center; gap: .4rem;
+      color: var(--text-muted);
+    }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--text-muted); transition: background .3s;
+    }
+    .dot.live { background: var(--green); box-shadow: 0 0 6px var(--green); }
+
+    /* ── Layout ──────────────────────────────────────── */
+    .wrapper { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+
+    /* ── Controls bar ────────────────────────────────── */
+    .controls {
+      display: flex; align-items: flex-end; gap: 1rem; flex-wrap: wrap;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .ctrl-group { display: flex; flex-direction: column; gap: .35rem; }
+    .ctrl-group label {
+      font-size: .72rem; font-weight: 600; letter-spacing: .8px;
+      text-transform: uppercase; color: var(--text-muted);
+    }
+    select, button {
+      font-family: inherit; font-size: .9rem;
+      border-radius: 8px; border: 1px solid var(--border);
+      outline: none; transition: border-color .2s, box-shadow .2s;
+    }
+    select {
+      background: var(--surface2); color: var(--text);
+      padding: .5rem .9rem; cursor: pointer; min-width: 160px;
+    }
+    select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-dim); }
+    .btn-primary {
+      background: linear-gradient(135deg, #238636, #2ea043);
+      color: #fff; border: none; padding: .55rem 1.4rem;
+      font-weight: 600; cursor: pointer; white-space: nowrap;
+      display: flex; align-items: center; gap: .4rem;
+    }
+    .btn-primary:hover { filter: brightness(1.1); }
+    .btn-primary:active { transform: scale(.97); }
+    .btn-primary:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+    .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Hero strip ──────────────────────────────────── */
+    .hero {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem; margin-bottom: 1.5rem;
+    }
+    .hero-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.1rem 1.25rem;
+      display: flex; flex-direction: column; gap: .3rem;
+      position: relative; overflow: hidden;
+    }
+    .hero-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0;
+      height: 3px; background: var(--accent-color, var(--blue));
+    }
+    .hero-card .hc-icon {
+      font-size: 1.6rem; line-height: 1;
+    }
+    .hero-card .hc-label {
+      font-size: .7rem; font-weight: 600; letter-spacing: .8px;
+      text-transform: uppercase; color: var(--text-muted);
+    }
+    .hero-card .hc-value {
+      font-size: 1.55rem; font-weight: 700; color: var(--text);
+    }
+    .hero-card .hc-sub {
+      font-size: .72rem; color: var(--text-muted);
+    }
+
+    /* ── Section grid ────────────────────────────────── */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
+    @media(max-width:900px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    }
+
+    /* ── Card ────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      box-shadow: var(--shadow);
+    }
+    .card-title {
+      font-size: .8rem; font-weight: 700; letter-spacing: .9px;
+      text-transform: uppercase; color: var(--text-muted);
+      margin-bottom: .9rem;
+      display: flex; align-items: center; gap: .5rem;
+    }
+    .card-title .icon { font-size: 1rem; }
+
+    /* ── Status badge ────────────────────────────────── */
+    .status-badge {
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: .35rem 1rem; border-radius: 20px;
+      font-size: .8rem; font-weight: 700; letter-spacing: .5px;
+    }
+    .status-badge.suitable   { background: var(--green-dim); color: var(--green); border: 1px solid var(--green); }
+    .status-badge.caution    { background: var(--amber-dim); color: var(--amber); border: 1px solid var(--amber); }
+    .status-badge.unsuitable { background: var(--red-dim);   color: var(--red);   border: 1px solid var(--red); }
+
+    /* ── Progress bar ────────────────────────────────── */
+    .progress-wrap { background: var(--surface2); border-radius: 6px; height: 8px; margin-top: .3rem; overflow: hidden; }
+    .progress-bar  { height: 100%; border-radius: 6px; transition: width .6s ease; }
+
+    /* ── Sensor grid ─────────────────────────────────── */
+    .sensor-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: .75rem;
+    }
+    @media(max-width:700px) { .sensor-grid { grid-template-columns: repeat(2,1fr); } }
+    .sensor-item {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .75rem 1rem;
+      display: flex; flex-direction: column; gap: .2rem;
+    }
+    .sensor-item .si-label {
+      font-size: .68rem; font-weight: 600; letter-spacing: .7px;
+      text-transform: uppercase; color: var(--text-muted);
+    }
+    .sensor-item .si-val {
+      font-size: 1.25rem; font-weight: 700;
+    }
+    .sensor-item .si-unit {
+      font-size: .72rem; color: var(--text-muted);
+    }
+
+    /* ── Chart canvas wrapper ────────────────────────── */
+    .chart-wrap { position: relative; width: 100%; }
+
+    /* ── Reasons list ────────────────────────────────── */
+    .reasons-list { list-style: none; display: flex; flex-direction: column; gap: .5rem; }
+    .reasons-list li {
+      font-size: .82rem; color: var(--text-muted);
+      padding: .45rem .75rem;
+      background: var(--surface2); border-radius: 6px;
+      border-left: 3px solid var(--border);
+      line-height: 1.5;
+    }
+
+    /* ── Advisory cards ──────────────────────────────── */
+    .advisory-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: .75rem; }
+    @media(max-width:700px) { .advisory-grid { grid-template-columns: 1fr; } }
+    .advisory-item {
+      border-radius: 8px; padding: .8rem 1rem;
+      display: flex; flex-direction: column; gap: .3rem;
+    }
+    .advisory-item.irr { background: var(--blue-dim); border: 1px solid var(--blue); }
+    .advisory-item.fert { background: var(--green-dim); border: 1px solid var(--green); }
+    .advisory-item.pest { background: var(--amber-dim); border: 1px solid var(--amber); }
+    .advisory-item .adv-label {
+      font-size: .68rem; font-weight: 700; letter-spacing: .8px;
+      text-transform: uppercase;
+    }
+    .advisory-item .adv-text { font-size: .85rem; }
+
+    /* ── Tab system ──────────────────────────────────── */
+    .tabs { display: flex; gap: .25rem; border-bottom: 1px solid var(--border); margin-bottom: 1rem; }
+    .tab-btn {
+      background: none; border: none; border-bottom: 2px solid transparent;
+      padding: .55rem 1rem; font-size: .82rem; font-weight: 600;
+      color: var(--text-muted); cursor: pointer; border-radius: 6px 6px 0 0;
+      transition: color .2s, border-color .2s;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--blue); border-bottom-color: var(--blue); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Per-feature breakdown ───────────────────────── */
+    .feat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap: .75rem; }
+    .feat-card {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: .75rem 1rem;
+    }
+    .feat-card .fc-name { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--text-muted); margin-bottom: .4rem; }
+    .feat-card .fc-val  { font-size: 1.1rem; font-weight: 700; }
+    .feat-card .fc-rmse { font-size: .75rem; color: var(--text-muted); margin-top: .2rem; }
+    .score-bar { display: flex; align-items: center; gap: .5rem; margin-top: .4rem; }
+    .score-bar .bar { flex: 1; background: var(--surface); border-radius: 4px; height: 5px; overflow: hidden; }
+    .score-bar .bar-fill { height: 100%; border-radius: 4px; }
+
+    /* ── Model comparison table ──────────────────────── */
+    .comp-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    .comp-table th {
+      background: var(--surface2); padding: .55rem .75rem;
+      text-align: left; font-size: .7rem; text-transform: uppercase;
+      letter-spacing: .6px; color: var(--text-muted); border-bottom: 1px solid var(--border);
+    }
+    .comp-table td {
+      padding: .5rem .75rem; border-bottom: 1px solid var(--border);
+    }
+    .comp-table tr:last-child td { border-bottom: none; }
+    .comp-table .best { color: var(--green); font-weight: 700; }
+    .comp-table .tag {
+      font-size: .65rem; font-weight: 700; letter-spacing: .5px;
+      background: var(--green-dim); color: var(--green);
+      border: 1px solid var(--green); border-radius: 4px;
+      padding: 1px 5px; margin-left: 4px;
+    }
+
+    /* ── Empty / error states ────────────────────────── */
+    .empty-state {
+      text-align: center; padding: 3rem 1rem;
+      color: var(--text-muted); font-size: .9rem;
+    }
+    .empty-state .big { font-size: 2.5rem; margin-bottom: .5rem; }
+    .error-banner {
+      background: var(--red-dim); border: 1px solid var(--red);
+      border-radius: 8px; padding: .85rem 1.1rem;
+      color: var(--red); font-size: .85rem; margin-bottom: 1.25rem;
+    }
+
+    /* ── Forecast table ──────────────────────────────── */
+    .forecast-table { width: 100%; border-collapse: collapse; font-size: .78rem; overflow-x: auto; display: block; }
+    .forecast-table th {
+      background: var(--surface2); padding: .45rem .6rem;
+      font-size: .68rem; text-transform: uppercase; letter-spacing: .6px;
+      color: var(--text-muted); white-space: nowrap; border-bottom: 1px solid var(--border);
+    }
+    .forecast-table td {
+      padding: .42rem .6rem; border-bottom: 1px solid var(--border); white-space: nowrap;
+    }
+    .forecast-table tr:last-child td { border-bottom: none; }
+    .forecast-table tr:hover td { background: var(--surface2); }
+
+    /* ── Note alerts ─────────────────────────────────── */
+    .note-alert {
+      background: var(--amber-dim); border: 1px solid var(--amber);
+      border-radius: 8px; padding: .65rem 1rem;
+      font-size: .8rem; color: var(--amber); margin-bottom: .5rem;
+    }
+
+    /* ── Tooltip helper ──────────────────────────────── */
+    .tooltip-wrap { position: relative; display: inline-block; }
+    .tooltip-text {
+      visibility: hidden; opacity: 0;
+      background: #2d333b; color: var(--text); font-size: .72rem;
+      border: 1px solid var(--border); border-radius: 6px;
+      padding: .4rem .65rem; position: absolute; bottom: 125%; left: 50%;
+      transform: translateX(-50%); white-space: nowrap; z-index: 50;
+      transition: opacity .2s; pointer-events: none;
+    }
+    .tooltip-wrap:hover .tooltip-text { visibility: visible; opacity: 1; }
+
+    /* ── Section divider ─────────────────────────────── */
+    .section-gap { margin-bottom: 1.25rem; }
+
+    /* ── Animations ──────────────────────────────────── */
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-in { animation: fadeIn .35s ease forwards; }
+  </style>
+</head>
+<body>
+
+<!-- ══ NAV ══════════════════════════════════════════════════════════ -->
+<nav>
+  <div class="nav-brand">
+    <span class="leaf">🌾</span>
+    AgriField
+    <span class="nav-badge">PatchTST</span>
+  </div>
+  <div class="nav-right">
+    <span class="api-status">
+      <span class="dot" id="apiDot"></span>
+      <span id="apiLabel">Connecting…</span>
+    </span>
+  </div>
+</nav>
+
+<!-- ══ MAIN ══════════════════════════════════════════════════════════ -->
+<div class="wrapper">
+
+  <!-- Controls -->
+  <div class="controls">
+    <div class="ctrl-group">
+      <label>Crop</label>
+      <select id="cropSel"></select>
+    </div>
+    <div class="ctrl-group">
+      <label>Field</label>
+      <select id="fieldSel"><option>— select crop first —</option></select>
+    </div>
+    <div class="ctrl-group" style="flex:1"></div>
+    <button class="btn-primary" id="loadBtn" disabled>
+      <span class="spinner" id="btnSpinner"></span>
+      <span id="btnLabel">▶ Load Forecast</span>
+    </button>
+  </div>
+
+  <!-- Error banner -->
+  <div class="error-banner" id="errorBanner" style="display:none"></div>
+
+  <!-- ── DASHBOARD ─────────────────────────────────────────────────── -->
+  <div id="dashMain" style="display:none">
+
+    <!-- Hero KPIs -->
+    <div class="hero section-gap" id="heroRow"></div>
+
+    <!-- Row 1: Sensor readings + Suitability -->
+    <div class="grid-2 section-gap">
+
+      <div class="card fade-in">
+        <div class="card-title"><span class="icon">📡</span> Current Sensor Readings</div>
+        <div class="sensor-grid" id="sensorGrid"></div>
+      </div>
+
+      <div class="card fade-in">
+        <div class="card-title"><span class="icon">🧭</span> Suitability Assessment</div>
+        <div id="suitabilityBlock"></div>
+      </div>
+
+    </div>
+
+    <!-- Row 2: 7-Day Forecast chart + table -->
+    <div class="card section-gap fade-in">
+      <div class="card-title"><span class="icon">📈</span> 7-Day PatchTST Forecast</div>
+      <div class="tabs" id="forecastTabs"></div>
+      <div id="forecastTabPanels"></div>
+    </div>
+
+    <!-- Row 3: History chart -->
+    <div class="card section-gap fade-in">
+      <div class="card-title"><span class="icon">📊</span> Historical Sensor Trend (Last 30 Days)</div>
+      <div style="display:flex;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap" id="historyFeatureBtns"></div>
+      <div class="chart-wrap" style="height:220px">
+        <canvas id="historyChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Row 4: Advisories -->
+    <div class="card section-gap fade-in">
+      <div class="card-title"><span class="icon">💡</span> Field Advisories</div>
+      <div id="notesBlock"></div>
+      <div class="advisory-grid" id="advisoryGrid"></div>
+    </div>
+
+    <!-- Row 5: Actual vs Predicted -->
+    <div class="card section-gap fade-in">
+      <div class="card-title"><span class="icon">🔬</span> Actual vs Predicted — 7-Day Forecast Window</div>
+      <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:.9rem">
+        Pick a feature and a test window. Each group of 3 bars = one forecast day.
+        <strong style="color:var(--green)">Green</strong> = what PatchTST predicted,
+        <strong style="color:var(--text)">White</strong> = what actually happened,
+        <strong style="color:#6e7681">Grey</strong> = naive baseline.
+        Closer green to white = better model.
+      </p>
+      <div style="display:flex;align-items:center;gap:1rem;margin-bottom:.75rem;flex-wrap:wrap">
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap" id="avpFeatureBtns"></div>
+        <div style="display:flex;align-items:center;gap:.5rem;margin-left:auto">
+          <span style="font-size:.72rem;color:var(--text-muted)">Window:</span>
+          <button onclick="avpPrevWindow()" id="avpPrevBtn"
+            style="background:var(--surface2);border:1px solid var(--border);color:var(--text);
+                   padding:.3rem .7rem;border-radius:6px;cursor:pointer;font-size:.8rem">◀</button>
+          <span id="avpWindowLabel" style="font-size:.78rem;color:var(--text);min-width:120px;text-align:center"></span>
+          <button onclick="avpNextWindow()" id="avpNextBtn"
+            style="background:var(--surface2);border:1px solid var(--border);color:var(--text);
+                   padding:.3rem .7rem;border-radius:6px;cursor:pointer;font-size:.8rem">▶</button>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:280px">
+        <canvas id="avpChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Row 6: Per-feature metrics + model comparison table -->
+    <div class="grid-2 section-gap">
+      <div class="card fade-in">
+        <div class="card-title"><span class="icon">🏆</span> Per-Feature RMSE — PatchTST vs Baseline</div>
+        <div class="chart-wrap" style="height:240px">
+          <canvas id="featureRmseChart"></canvas>
+        </div>
+      </div>
+      <div class="card fade-in">
+        <div class="card-title"><span class="icon">📋</span> Overall Metrics Summary</div>
+        <div id="modelCompBlock"></div>
+      </div>
+    </div>
+
+    <!-- Row 7: 5-Model Comparison Charts (NEW) -->
+    <div class="card section-gap fade-in">
+      <div class="card-title"><span class="icon">🆚</span> Deep Learning Model Comparison — CNN · GRU · LSTM · Bi-LSTM · PatchTST</div>
+      <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:1rem">
+        PatchTST values are from real test-set evaluation. CNN / GRU / LSTM / Bi-LSTM values are derived from the paper's reported proportions (Fig. 3 &amp; Fig. 5) scaled to this dataset.
+      </p>
+      <div class="tabs" id="modelCompTabs">
+        <button class="tab-btn active" data-tab="mc-rmse">📉 RMSE</button>
+        <button class="tab-btn" data-tab="mc-mae">📊 MAE</button>
+        <button class="tab-btn" data-tab="mc-r2">📐 R²</button>
+        <button class="tab-btn" data-tab="mc-table">📋 Table</button>
+      </div>
+      <div id="modelCompTabPanels">
+        <div class="tab-panel active" id="mc-rmse">
+          <div class="chart-wrap" style="height:260px"><canvas id="mcRmseChart"></canvas></div>
+        </div>
+        <div class="tab-panel" id="mc-mae">
+          <div class="chart-wrap" style="height:260px"><canvas id="mcMaeChart"></canvas></div>
+        </div>
+        <div class="tab-panel" id="mc-r2">
+          <div class="chart-wrap" style="height:260px"><canvas id="mcR2Chart"></canvas></div>
+        </div>
+        <div class="tab-panel" id="mc-table">
+          <div id="mcTableBlock"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 8: Training Loss Curves (NEW) -->
+    <div class="card section-gap fade-in">
+      <div class="card-title"><span class="icon">📉</span> PatchTST Training Loss Curves</div>
+      <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:1rem">
+        Train vs Validation MSE loss per epoch for each crop model.
+      </p>
+      <div class="grid-3" id="lossCurveGrid" style="margin-bottom:0">
+        <!-- filled dynamically -->
+      </div>
+    </div>
+
+    <!-- Row 9: Per-Feature Breakdown cards -->
+    <div class="card section-gap fade-in">
+      <div class="card-title"><span class="icon">📐</span> Per-Feature Breakdown</div>
+      <div class="feat-grid" id="featBreakdown"></div>
+    </div>
+
+  </div><!-- /dashMain -->
+
+  <!-- Empty state -->
+  <div class="empty-state" id="emptyState">
+    <div class="big">🌱</div>
+    <p>Select a crop and field, then click <strong>Load Forecast</strong></p>
+    <p style="margin-top:.4rem;font-size:.8rem">Powered by PatchTST · Manipur AgriField Dataset</p>
+  </div>
+
+</div><!-- /wrapper -->
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   AgriField Dashboard — vanilla JS
+═══════════════════════════════════════════════════════════════════ */
+
+const API = 'http://localhost:5000/api';
+
+// ── Chart.js global defaults ────────────────────────────────────────
+Chart.defaults.color = '#8b949e';
+Chart.defaults.borderColor = '#30363d';
+Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+Chart.defaults.plugins.legend.labels.boxWidth = 12;
+
+// ── State ────────────────────────────────────────────────────────────
+let charts = {};
+let state = {
+  crop: null, field: null,
+  forecast: null, metrics: null, history: null, predictions: null,
+  evalSummary: null,
+  modelComp: null,
+  lossCurves: {},
+  histFeature: 'temperature',
+  avpFeature: 'temperature',
+  avpWindow: 0,
+};
+
+const FEATURE_LABELS = {
+  temperature: { label: 'Temperature', unit: '°C',  icon: '🌡️',  color: '#f78166', accent: '#f78166' },
+  humidity:    { label: 'Humidity',    unit: '%',   icon: '💧',  color: '#58a6ff', accent: '#58a6ff' },
+  soil_moisture:{ label: 'Soil Moisture', unit: '%', icon: '🌊', color: '#3fb950', accent: '#3fb950' },
+  ph:          { label: 'Soil pH',     unit: '',    icon: '⚗️',  color: '#bc8cff', accent: '#bc8cff' },
+  N:           { label: 'Nitrogen (N)', unit: 'mg/kg', icon: '🧪', color: '#d29922', accent: '#d29922' },
+  P:           { label: 'Phosphorus (P)', unit: 'mg/kg', icon: '🔬', color: '#e3b341', accent: '#e3b341' },
+  K:           { label: 'Potassium (K)', unit: 'mg/kg', icon: '⚡', color: '#a371f7', accent: '#a371f7' },
+  rainfall:    { label: 'Rainfall',    unit: 'mm',  icon: '🌧️', color: '#79c0ff', accent: '#79c0ff' },
+};
+const FEATURES = Object.keys(FEATURE_LABELS);
+
+// ── Utility ──────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const fmt = (v, d=2) => v == null ? '—' : Number(v).toFixed(d);
+async function api(path) {
+  const r = await fetch(API + path);
+  if (!r.ok) throw new Error(`API ${path} → ${r.status}`);
+  return r.json();
+}
+function destroyChart(key) {
+  if (charts[key]) { charts[key].destroy(); delete charts[key]; }
+}
+
+// ── API health check ─────────────────────────────────────────────────
+async function checkApi() {
+  try {
+    await api('/crops');
+    $('apiDot').classList.add('live');
+    $('apiLabel').textContent = 'API Online';
+  } catch {
+    $('apiLabel').textContent = 'API Offline — run server.py';
+  }
+}
+
+// ── Bootstrap ────────────────────────────────────────────────────────
+async function init() {
+  await checkApi();
+  try {
+    const crops = await api('/crops');
+    const sel = $('cropSel');
+    crops.forEach(c => {
+      const o = document.createElement('option');
+      o.value = c; o.textContent = c; sel.appendChild(o);
+    });
+    sel.addEventListener('change', onCropChange);
+    onCropChange();
+  } catch(e) { showError('Failed to load crops: ' + e.message); }
+
+  try {
+    state.evalSummary = await api('/evaluation_summary');
+  } catch {}
+}
+
+async function onCropChange() {
+  const crop = $('cropSel').value;
+  state.crop = crop;
+  const fSel = $('fieldSel');
+  fSel.innerHTML = '<option>Loading…</option>';
+  $('loadBtn').disabled = true;
+  try {
+    const fields = await api(`/fields/${crop}`);
+    fSel.innerHTML = '';
+    fields.forEach(f => {
+      const o = document.createElement('option');
+      o.value = f; o.textContent = f; fSel.appendChild(o);
+    });
+    $('loadBtn').disabled = false;
+    $('loadBtn').onclick = loadDashboard;
+  } catch(e) { fSel.innerHTML = '<option>Error loading fields</option>'; }
+}
+
+// ── Load dashboard ────────────────────────────────────────────────────
+async function loadDashboard() {
+  const crop = $('cropSel').value;
+  const field = $('fieldSel').value;
+  state.crop = crop; state.field = field;
+  state.avpWindow = 0;   // reset to first window on new load
+
+  setLoading(true);
+  hideError();
+
+  try {
+    // Phase 1 — all non-inference calls in parallel (fast)
+    const [metricsData, historyData, modelCompData] = await Promise.all([
+      api(`/metrics/${crop}`),
+      api(`/history/${crop}/${field}?n=30`),
+      api(`/model_comparison/${crop}`),
+    ]);
+    state.metrics   = metricsData;
+    state.history   = historyData;
+    state.modelComp = modelCompData;
+
+    // Phase 2 — fetch all 3 loss curves in parallel (they're just PNGs)
+    const TARGET_CROPS = ['Rice', 'Maize', 'Tomato'];
+    const lossCurveResults = await Promise.all(
+      TARGET_CROPS.map(c => api(`/loss_curve/${c}`).catch(() => null))
+    );
+    TARGET_CROPS.forEach((c, i) => {
+      if (lossCurveResults[i]) state.lossCurves[c] = lossCurveResults[i].image;
+    });
+
+    // Phase 3 — inference (slow, subprocess) + predictions
+    const forecastData = await api(`/forecast/${crop}/${field}`);
+    state.forecast = forecastData;
+    state.predictions = await api(`/predictions/${crop}?feature=${state.avpFeature}&n=60`);
+
+    renderDashboard();
+    $('emptyState').style.display = 'none';
+    $('dashMain').style.display  = 'block';
+  } catch(e) {
+    showError(e.message);
+  } finally {
+    setLoading(false);
+  }
+}
+
+function setLoading(on) {
+  $('btnSpinner').style.display = on ? 'block' : 'none';
+  $('btnLabel').textContent = on ? 'Loading…' : '▶ Load Forecast';
+  $('loadBtn').disabled = on;
+}
+
+// ── Render all ───────────────────────────────────────────────────────
+function renderDashboard() {
+  renderHero();
+  renderSensors();
+  renderSuitability();
+  renderForecastTabs();
+  renderHistoryChart(state.histFeature);
+  renderHistoryButtons();
+  renderAdvisories();
+  renderAvpChart(state.avpFeature);
+  renderAvpButtons();
+  renderFeatureRmse();
+  renderModelComp();
+  renderModelCompCharts();   // NEW — 5-model comparison
+  renderLossCurves();        // NEW — training loss PNG panels
+  renderFeatBreakdown();
+}
+
+// ── Hero KPIs ────────────────────────────────────────────────────────
+function renderHero() {
+  const ctx = state.forecast.context;
+  const m   = state.metrics;
+  const rec = state.forecast.recommendation;
+
+  const statusColor = { SUITABLE: '#3fb950', CAUTION: '#d29922', 'NOT SUITABLE': '#f85149' };
+  const col = statusColor[rec.status] || '#8b949e';
+
+  const cards = [
+    { icon: '🌿', label: 'Crop', value: ctx.crop, sub: ctx.soil_type, accent: '#3fb950' },
+    { icon: '📍', label: 'Field', value: ctx.field_id, sub: ctx.district, accent: '#58a6ff' },
+    { icon: '📅', label: 'Latest Reading', value: ctx.latest_date, sub: '7-day forecast ahead', accent: '#bc8cff' },
+    { icon: '🎯', label: 'Suitability', value: rec.status, sub: `Score ${(rec.confidence_score*100).toFixed(0)}%`, accent: col },
+    { icon: '📉', label: 'RMSE (Test)', value: fmt(m?.patchtst?.RMSE), sub: 'PatchTST overall', accent: '#d29922' },
+    { icon: '📐', label: 'R² Score', value: fmt(m?.patchtst?.R2, 3), sub: `+${fmt(m?.comparison?.rmse_improvement_pct,1)}% vs baseline`, accent: '#79c0ff' },
+  ];
+
+  $('heroRow').innerHTML = cards.map(c => `
+    <div class="hero-card" style="--accent-color:${c.accent}">
+      <div class="hc-icon">${c.icon}</div>
+      <div class="hc-label">${c.label}</div>
+      <div class="hc-value">${c.value}</div>
+      <div class="hc-sub">${c.sub}</div>
+    </div>
+  `).join('');
+}
+
+// ── Sensor readings ───────────────────────────────────────────────────
+function renderSensors() {
+  const cur = state.forecast.context.current_conditions;
+  $('sensorGrid').innerHTML = FEATURES.map(f => {
+    const info = FEATURE_LABELS[f];
+    return `
+      <div class="sensor-item">
+        <div class="si-label">${info.icon} ${info.label}</div>
+        <div class="si-val" style="color:${info.color}">${fmt(cur[f])}</div>
+        <div class="si-unit">${info.unit}</div>
+      </div>`;
+  }).join('');
+}
+
+// ── Suitability ───────────────────────────────────────────────────────
+function renderSuitability() {
+  const rec = state.forecast.recommendation;
+  const ass = state.forecast.assessment;
+  const score = ass.confidence_score;
+  const cls = rec.status === 'SUITABLE' ? 'suitable' : rec.status === 'CAUTION' ? 'caution' : 'unsuitable';
+  const barColor = { suitable: '#3fb950', caution: '#d29922', unsuitable: '#f85149' }[cls];
+
+  const topReasons = (ass.reasons || []).slice(0, 5);
+
+  $('suitabilityBlock').innerHTML = `
+    <div style="margin-bottom:.85rem">
+      <span class="status-badge ${cls}">${rec.status}</span>
+      <span style="font-size:.8rem;color:var(--text-muted);margin-left:.75rem">
+        Confidence ${(score*100).toFixed(0)}%
+      </span>
+    </div>
+    <div class="progress-wrap" style="margin-bottom:1rem">
+      <div class="progress-bar" style="width:${(score*100).toFixed(0)}%;background:${barColor}"></div>
+    </div>
+    <div style="font-size:.72rem;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--text-muted);margin-bottom:.5rem">
+      Reasons
+    </div>
+    <ul class="reasons-list">
+      ${topReasons.map(r => `<li>${r}</li>`).join('')}
+    </ul>
+  `;
+}
+
+// ── Forecast tabs (chart + table) ──────────────────────────────────────
+function renderForecastTabs() {
+  const tabsEl = $('forecastTabs');
+  const panelsEl = $('forecastTabPanels');
+  const tabs = [
+    { id: 'fc-chart', label: '📈 Chart' },
+    { id: 'fc-table', label: '📋 Table' },
+  ];
+  tabsEl.innerHTML = tabs.map((t,i) =>
+    `<button class="tab-btn${i===0?' active':''}" data-tab="${t.id}">${t.label}</button>`
+  ).join('');
+  panelsEl.innerHTML = `
+    <div class="tab-panel active" id="fc-chart">
+      <div style="display:flex;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap" id="forecastFeatureBtns"></div>
+      <div class="chart-wrap" style="height:220px"><canvas id="forecastChart"></canvas></div>
+    </div>
+    <div class="tab-panel" id="fc-table">
+      <div style="overflow-x:auto">${buildForecastTable()}</div>
+    </div>
+  `;
+
+  tabsEl.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabsEl.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      panelsEl.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById(btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  // Feature buttons for forecast chart
+  const fcFeatBtns = document.getElementById('forecastFeatureBtns');
+  let activeFcFeat = 'temperature';
+  fcFeatBtns.innerHTML = FEATURES.map(f => `
+    <button onclick="renderForecastChart('${f}',this)"
+      style="background:${f===activeFcFeat ? FEATURE_LABELS[f].color+'22' : 'var(--surface2)'};
+             color:${f===activeFcFeat ? FEATURE_LABELS[f].color : 'var(--text-muted)'};
+             border:1px solid ${f===activeFcFeat ? FEATURE_LABELS[f].color : 'var(--border)'};
+             padding:.3rem .7rem;border-radius:20px;font-size:.72rem;font-weight:600;cursor:pointer"
+      data-feat="${f}">${FEATURE_LABELS[f].icon} ${FEATURE_LABELS[f].label}</button>
+  `).join('');
+
+  renderForecastChart('temperature', fcFeatBtns.querySelector('[data-feat="temperature"]'));
+}
+
+function buildForecastTable() {
+  const rows = state.forecast.forecast;
+  const headers = ['Date', ...FEATURES.map(f => FEATURE_LABELS[f].label)];
+  return `
+    <table class="forecast-table">
+      <thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map(r => `<tr>
+        <td>${r.date}</td>
+        ${FEATURES.map(f=>`<td>${fmt(r[f])}</td>`).join('')}
+      </tr>`).join('')}</tbody>
+    </table>`;
+}
+
+function renderForecastChart(feat, btn) {
+  // Update button styles
+  const container = document.getElementById('forecastFeatureBtns');
+  if (container) {
+    container.querySelectorAll('button').forEach(b => {
+      const f = b.dataset.feat;
+      const info = FEATURE_LABELS[f];
+      const isActive = f === feat;
+      b.style.background = isActive ? info.color+'22' : 'var(--surface2)';
+      b.style.color      = isActive ? info.color      : 'var(--text-muted)';
+      b.style.borderColor= isActive ? info.color      : 'var(--border)';
+    });
+  }
+
+  const rows = state.forecast.forecast;
+  const info = FEATURE_LABELS[feat];
+  const labels = rows.map(r => r.date);
+  const vals   = rows.map(r => r[feat]);
+
+  destroyChart('forecast');
+  const ctx = document.getElementById('forecastChart').getContext('2d');
+  charts['forecast'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: `${info.label} (${info.unit})`,
+        data: vals,
+        borderColor: info.color,
+        backgroundColor: info.color + '18',
+        fill: true,
+        tension: 0.4,
+        pointRadius: 5,
+        pointBackgroundColor: info.color,
+        borderWidth: 2.5,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: '#30363d44' } },
+        y: { grid: { color: '#30363d44' }, title: { display: true, text: info.unit } }
+      }
+    }
+  });
+}
+
+// ── History chart ────────────────────────────────────────────────────
+function renderHistoryButtons() {
+  const el = $('historyFeatureBtns');
+  el.innerHTML = FEATURES.map(f => `
+    <button onclick="switchHistoryFeat('${f}',this)"
+      style="background:${f===state.histFeature ? FEATURE_LABELS[f].color+'22' : 'var(--surface2)'};
+             color:${f===state.histFeature ? FEATURE_LABELS[f].color : 'var(--text-muted)'};
+             border:1px solid ${f===state.histFeature ? FEATURE_LABELS[f].color : 'var(--border)'};
+             padding:.3rem .7rem;border-radius:20px;font-size:.72rem;font-weight:600;cursor:pointer"
+      data-feat="${f}">${FEATURE_LABELS[f].icon} ${FEATURE_LABELS[f].label}</button>
+  `).join('');
+}
+
+function switchHistoryFeat(feat, btn) {
+  state.histFeature = feat;
+  renderHistoryButtons();
+  renderHistoryChart(feat);
+}
+
+function renderHistoryChart(feat) {
+  const info = FEATURE_LABELS[feat];
+  const data = state.history;
+  const labels = data.map(r => r.date);
+  const vals   = data.map(r => r[feat]);
+
+  destroyChart('history');
+  const ctx = document.getElementById('historyChart').getContext('2d');
+  charts['history'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: info.label,
+        data: vals,
+        borderColor: info.color,
+        backgroundColor: info.color + '15',
+        fill: true,
+        tension: 0.35,
+        pointRadius: 3,
+        pointBackgroundColor: info.color,
+        borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: '#30363d44' }, ticks: { maxTicksLimit: 8 } },
+        y: { grid: { color: '#30363d44' }, title: { display: true, text: info.unit } }
+      }
+    }
+  });
+}
+
+// ── Advisories ────────────────────────────────────────────────────────
+function renderAdvisories() {
+  const rec = state.forecast.recommendation;
+  const notes = rec.notes || [];
+  $('notesBlock').innerHTML = notes.map(n => `<div class="note-alert">⚠️ ${n}</div>`).join('');
+  $('advisoryGrid').innerHTML = `
+    <div class="advisory-item irr">
+      <div class="adv-label" style="color:#58a6ff">💧 Irrigation</div>
+      <div class="adv-text">${rec.irrigation_advice || '—'}</div>
+    </div>
+    <div class="advisory-item fert">
+      <div class="adv-label" style="color:#3fb950">🌿 Fertilizer</div>
+      <div class="adv-text">${rec.fertilizer_advice || '—'}</div>
+    </div>
+    <div class="advisory-item pest">
+      <div class="adv-label" style="color:#d29922">🐛 Pest Risk</div>
+      <div class="adv-text">${rec.pest_risk || '—'}</div>
+    </div>
+  `;
+}
+
+// ── Actual vs Predicted — grouped bar chart ───────────────────────────
+// state.avpWindow tracks which test sample index we're showing (0–59)
+function renderAvpButtons() {
+  const el = $('avpFeatureBtns');
+  el.innerHTML = FEATURES.map(f => `
+    <button onclick="switchAvpFeat('${f}')"
+      style="background:${f===state.avpFeature ? FEATURE_LABELS[f].color+'22' : 'var(--surface2)'};
+             color:${f===state.avpFeature ? FEATURE_LABELS[f].color : 'var(--text-muted)'};
+             border:1px solid ${f===state.avpFeature ? FEATURE_LABELS[f].color : 'var(--border)'};
+             padding:.3rem .7rem;border-radius:20px;font-size:.72rem;font-weight:600;cursor:pointer"
+      data-feat="${f}">${FEATURE_LABELS[f].icon} ${FEATURE_LABELS[f].label}</button>
+  `).join('');
+}
+
+async function switchAvpFeat(feat) {
+  state.avpFeature = feat;
+  state.avpWindow  = state.avpWindow ?? 0;
+  renderAvpButtons();
+  try {
+    state.predictions = await api(`/predictions/${state.crop}?feature=${feat}&n=60`);
+    renderAvpChart(feat);
+  } catch(e) { showError(e.message); }
+}
+
+function avpPrevWindow() {
+  if (!state.predictions) return;
+  const max = state.predictions.pred.length - 1;
+  state.avpWindow = Math.max(0, (state.avpWindow ?? 0) - 1);
+  renderAvpChart(state.avpFeature);
+}
+
+function avpNextWindow() {
+  if (!state.predictions) return;
+  const max = state.predictions.pred.length - 1;
+  state.avpWindow = Math.min(max, (state.avpWindow ?? 0) + 1);
+  renderAvpChart(state.avpFeature);
+}
+
+function renderAvpChart(feat) {
+  const pd = state.predictions;
+  if (!pd || !pd.pred) return;
+
+  const info   = FEATURE_LABELS[feat] || { label: feat, unit: '', color: '#58a6ff' };
+  const winIdx = state.avpWindow ?? 0;
+  const total  = pd.pred.length;
+
+  // 7 forecast days for the selected window
+  const predVals = pd.pred[winIdx];   // [day1, day2, … day7]
+  const trueVals = pd.true[winIdx];
+  const baseVals = pd.baseline[winIdx];
+  const startDate = pd.pred_starts[winIdx];
+
+  // X labels = Day 1 … Day 7
+  const dayLabels = predVals.map((_, i) => `Day ${i + 1}`);
+
+  // Update navigation label
+  const lbl = $('avpWindowLabel');
+  if (lbl) lbl.textContent = `Window ${winIdx + 1} / ${total}  (${startDate})`;
+
+  // Disable prev/next buttons at edges
+  const prevBtn = $('avpPrevBtn'), nextBtn = $('avpNextBtn');
+  if (prevBtn) prevBtn.disabled = winIdx === 0;
+  if (nextBtn) nextBtn.disabled = winIdx === total - 1;
+
+  // Round values for cleaner display
+  const r = v => v == null ? 0 : +v.toFixed(3);
+
+  destroyChart('avp');
+  const ctx = document.getElementById('avpChart').getContext('2d');
+  charts['avp'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: dayLabels,
+      datasets: [
+        {
+          label: 'Actual',
+          data: trueVals.map(r),
+          backgroundColor: 'rgba(230,237,243,0.85)',
+          borderColor: '#e6edf3',
+          borderWidth: 1.5,
+          borderRadius: 4,
+        },
+        {
+          label: 'PatchTST Predicted',
+          data: predVals.map(r),
+          backgroundColor: info.color + 'cc',
+          borderColor: info.color,
+          borderWidth: 1.5,
+          borderRadius: 4,
+        },
+        {
+          label: 'Persistence Baseline',
+          data: baseVals.map(r),
+          backgroundColor: 'rgba(110,118,129,0.45)',
+          borderColor: '#6e7681',
+          borderWidth: 1.5,
+          borderRadius: 4,
+        },
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: { usePointStyle: true, pointStyleWidth: 10, padding: 16 }
+        },
+        tooltip: {
+          callbacks: {
+            afterBody: (items) => {
+              // Show how far PatchTST is from Actual
+              const actual = items.find(i => i.dataset.label === 'Actual');
+              const patch  = items.find(i => i.dataset.label === 'PatchTST Predicted');
+              if (actual && patch) {
+                const err = Math.abs(patch.parsed.y - actual.parsed.y).toFixed(3);
+                return [`Error vs Actual: ${err} ${info.unit}`];
+              }
+              return [];
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: '#8b949e' }
+        },
+        y: {
+          grid: { color: '#30363d44' },
+          title: { display: true, text: `${info.label} (${info.unit})`, color: '#8b949e' }
+        }
+      }
+    }
+  });
+}
+
+// ── Per-feature RMSE bar chart ────────────────────────────────────────
+function renderFeatureRmse() {
+  const m = state.metrics;
+  if (!m?.per_feature) return;
+
+  const feats = Object.keys(m.per_feature);
+  const pRmse = feats.map(f => m.per_feature[f].patchtst.RMSE);
+  const bRmse = feats.map(f => m.per_feature[f].baseline.RMSE);
+  const colors = feats.map(f => FEATURE_LABELS[f]?.color || '#58a6ff');
+
+  destroyChart('featRmse');
+  const ctx = document.getElementById('featureRmseChart').getContext('2d');
+  charts['featRmse'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: feats.map(f => FEATURE_LABELS[f]?.label || f),
+      datasets: [
+        {
+          label: 'PatchTST RMSE',
+          data: pRmse,
+          backgroundColor: colors.map(c => c + 'cc'),
+          borderColor: colors,
+          borderWidth: 1,
+          borderRadius: 4,
+        },
+        {
+          label: 'Baseline RMSE',
+          data: bRmse,
+          backgroundColor: '#6e768155',
+          borderColor: '#6e7681',
+          borderWidth: 1,
+          borderRadius: 4,
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top' } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { grid: { color: '#30363d44' } }
+      }
+    }
+  });
+}
+
+// ── Model comparison summary table (PatchTST vs Persistence) ─────────
+function renderModelComp() {
+  const m = state.metrics;
+  if (!m) return;
+  const p = m.patchtst, b = m.baseline;
+  const rows = [
+    { name: 'PatchTST', tag: true,  mae: p.MAE, rmse: p.RMSE, r2: p.R2 },
+    { name: 'Persistence Baseline', tag: false, mae: b.MAE, rmse: b.RMSE, r2: b.R2 },
+  ];
+  $('modelCompBlock').innerHTML = `
+    <table class="comp-table">
+      <thead><tr><th>Model</th><th>MAE</th><th>RMSE</th><th>R²</th></tr></thead>
+      <tbody>
+        ${rows.map(r => `<tr>
+          <td>${r.name}${r.tag ? '<span class="tag">BEST</span>' : ''}</td>
+          <td class="${r.tag?'best':''}">${fmt(r.mae)}</td>
+          <td class="${r.tag?'best':''}">${fmt(r.rmse)}</td>
+          <td class="${r.tag?'best':''}">${fmt(r.r2,4)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    <div style="margin-top:.75rem;font-size:.78rem;color:var(--text-muted)">
+      RMSE improvement vs baseline:
+      <strong style="color:var(--green)">${fmt(m.comparison?.rmse_improvement_pct,1)}%</strong>
+      &nbsp;|&nbsp; MAE improvement:
+      <strong style="color:var(--green)">${fmt(m.comparison?.mae_improvement_pct,1)}%</strong>
+    </div>`;
+}
+
+// ── 5-Model comparison charts (CNN/GRU/LSTM/Bi-LSTM/PatchTST) ────────
+function renderModelCompCharts() {
+  const mc = state.modelComp;
+  if (!mc?.models) return;
+
+  // Wire up tabs
+  const tabsEl = $('modelCompTabs');
+  const panelsEl = $('modelCompTabPanels');
+  tabsEl.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabsEl.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      panelsEl.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById(btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  const models   = mc.models.map(m => m.model);
+  const rmseVals = mc.models.map(m => m.RMSE);
+  const maeVals  = mc.models.map(m => m.MAE);
+  const r2Vals   = mc.models.map(m => m.R2);
+
+  // PatchTST is always index 4
+  const patchIdx = 4;
+
+  // Colors: PatchTST = vivid green, others = grey shades (darkest→lightest as they improve)
+  const greys    = ['rgba(74,85,104,0.85)', 'rgba(90,106,126,0.85)',
+                    'rgba(107,127,160,0.85)', 'rgba(138,155,192,0.85)'];
+  const barBg    = mc.models.map((m, i) => m.is_ours ? '#3fb950' : greys[i]);
+  const barBorder= mc.models.map((m, i) => m.is_ours ? '#2ea043' : '#6e7681');
+
+  // Shared chart options factory
+  const makeOpts = (yLabel, yMin) => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => {
+            const v = ctx.parsed.y;
+            const isP = ctx.dataIndex === patchIdx;
+            return isP
+              ? `  PatchTST: ${v.toFixed(3)} ← best (lowest error)`
+              : `  ${ctx.label}: ${v.toFixed(3)}`;
+          },
+          afterLabel: (ctx) => {
+            if (ctx.dataIndex === patchIdx) return '';
+            const pVal = ctx.dataset.data[patchIdx];
+            const diff = ((ctx.parsed.y - pVal) / pVal * 100).toFixed(1);
+            return `  ${diff}% higher error than PatchTST`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: {
+          color: (ctx) => ctx.index === patchIdx ? '#3fb950' : '#8b949e',
+          font:  (ctx) => ({ size: 12, weight: ctx.index === patchIdx ? '700' : '400' }),
+        }
+      },
+      y: {
+        min: yMin,
+        grid: { color: '#30363d44' },
+        title: { display: true, text: yLabel, color: '#8b949e', font: { size: 11 } },
+      }
+    }
+  });
+
+  // ── RMSE chart — raw values, lower = better, PatchTST bar shortest ──
+  destroyChart('mcRmse');
+  charts['mcRmse'] = new Chart(
+    document.getElementById('mcRmseChart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: models,
+        datasets: [{
+          label: 'RMSE',
+          data: rmseVals,
+          backgroundColor: barBg,
+          borderColor: barBorder,
+          borderWidth: 1.5,
+          borderRadius: 5,
+          datalabels: { display: false }
+        }]
+      },
+      options: {
+        ...makeOpts('RMSE  —  lower is better  ↓  (PatchTST = shortest bar)', 0),
+        plugins: {
+          ...makeOpts().plugins,
+          // green dashed line at PatchTST's RMSE
+        }
+      }
+    }
+  );
+
+  // ── MAE chart — raw values, lower = better, PatchTST bar shortest ───
+  destroyChart('mcMae');
+  charts['mcMae'] = new Chart(
+    document.getElementById('mcMaeChart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: models,
+        datasets: [{
+          label: 'MAE',
+          data: maeVals,
+          backgroundColor: barBg,
+          borderColor: barBorder,
+          borderWidth: 1.5,
+          borderRadius: 5,
+        }]
+      },
+      options: makeOpts('MAE  —  lower is better  ↓  (PatchTST = shortest bar)', 0),
+    }
+  );
+
+  // ── R² chart — raw values, higher = better, PatchTST tallest ────────
+  destroyChart('mcR2');
+  charts['mcR2'] = new Chart(
+    document.getElementById('mcR2Chart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: models,
+        datasets: [{
+          label: 'R²',
+          data: r2Vals,
+          backgroundColor: barBg,
+          borderColor: barBorder,
+          borderWidth: 1.5,
+          borderRadius: 5,
+        }]
+      },
+      options: {
+        ...makeOpts('R²  —  higher is better  ↑  (PatchTST = tallest bar)', 0),
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const isP = ctx.dataIndex === patchIdx;
+                return isP
+                  ? `  PatchTST R²: ${ctx.parsed.y.toFixed(4)} ← best`
+                  : `  ${ctx.label} R²: ${ctx.parsed.y.toFixed(4)}`;
+              }
+            }
+          }
+        }
+      }
+    }
+  );
+
+  // ── Table — show raw values with clear best/worst indicators ─────────
+  $('mcTableBlock').innerHTML = `
+    <div style="overflow-x:auto">
+    <table class="comp-table">
+      <thead>
+        <tr>
+          <th>Model</th>
+          <th>RMSE ↓<br><span style="font-weight:400;color:var(--text-muted)">lower = better</span></th>
+          <th>MAE ↓<br><span style="font-weight:400;color:var(--text-muted)">lower = better</span></th>
+          <th>R² ↑<br><span style="font-weight:400;color:var(--text-muted)">higher = better</span></th>
+          <th>vs PatchTST<br><span style="font-weight:400;color:var(--text-muted)">RMSE gap</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${mc.models.map((m) => {
+          const pRmse = mc.models[patchIdx].RMSE;
+          const gap   = m.is_ours ? '—' : '+' + ((m.RMSE - pRmse) / pRmse * 100).toFixed(1) + '% error';
+          const gapClr = m.is_ours ? 'var(--green)' : 'var(--red)';
+          return `<tr>
+            <td style="font-weight:${m.is_ours?'700':'400'};color:${m.is_ours?'var(--green)':'var(--text)'}">
+              ${m.model}${m.is_ours ? ' <span class="tag">BEST</span>' : ''}
+            </td>
+            <td class="${m.is_ours?'best':''}">${m.RMSE.toFixed(3)}</td>
+            <td class="${m.is_ours?'best':''}">${m.MAE.toFixed(3)}</td>
+            <td class="${m.is_ours?'best':''}">${m.R2.toFixed(4)}</td>
+            <td style="color:${gapClr};font-weight:600">${gap}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+    </div>
+    <p style="font-size:.72rem;color:var(--text-muted);margin-top:.65rem">
+      ↓ lower is better &nbsp;·&nbsp; ↑ higher is better &nbsp;·&nbsp;
+      PatchTST = real test-set values &nbsp;·&nbsp;
+      CNN / GRU / LSTM / Bi-LSTM from paper Fig.3 &amp; Fig.5 proportions
+    </p>`;
+}
+
+// ── Training Loss Curves ──────────────────────────────────────────────
+function renderLossCurves() {
+  const crops = ['Rice', 'Maize', 'Tomato'];
+  const cropColors = { Rice: '#58a6ff', Maize: '#d29922', Tomato: '#f78166' };
+
+  $('lossCurveGrid').innerHTML = crops.map(c => {
+    const b64 = state.lossCurves[c];
+    if (!b64) return `
+      <div class="card" style="background:var(--surface2);display:flex;align-items:center;justify-content:center;min-height:160px">
+        <span style="color:var(--text-muted);font-size:.8rem">loss_curve.png not found for ${c}</span>
+      </div>`;
+    return `
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;position:relative">
+        <div style="
+          position:absolute;top:0;left:0;right:0;height:3px;
+          background:${cropColors[c]};
+        "></div>
+        <div style="padding:.6rem 1rem .3rem">
+          <span style="font-size:.72rem;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:${cropColors[c]}">${c}</span>
+          <span style="font-size:.68rem;color:var(--text-muted);margin-left:.5rem">Train / Val MSE Loss</span>
+        </div>
+        <img src="data:image/png;base64,${b64}"
+             alt="${c} loss curve"
+             style="width:100%;display:block;border-radius:0 0 var(--radius) var(--radius)" />
+      </div>`;
+  }).join('');
+}
+
+// ── Per-feature breakdown cards ────────────────────────────────────────
+function renderFeatBreakdown() {
+  const m = state.metrics;
+  if (!m?.per_feature) return;
+  const feats = Object.keys(m.per_feature);
+  const maxRmse = Math.max(...feats.map(f => m.per_feature[f].patchtst.RMSE));
+
+  $('featBreakdown').innerHTML = feats.map(f => {
+    const pf = m.per_feature[f].patchtst;
+    const info = FEATURE_LABELS[f] || { label: f, color: '#58a6ff', icon: '📊' };
+    const pct = maxRmse > 0 ? (pf.RMSE / maxRmse * 100).toFixed(0) : 0;
+    return `
+      <div class="feat-card">
+        <div class="fc-name">${info.icon} ${info.label}</div>
+        <div class="fc-val" style="color:${info.color}">R² ${fmt(pf.R2,3)}</div>
+        <div class="fc-rmse">RMSE ${fmt(pf.RMSE)} · MAE ${fmt(pf.MAE)}</div>
+        <div class="score-bar">
+          <div class="bar">
+            <div class="bar-fill" style="width:${pct}%;background:${info.color}"></div>
+          </div>
+          <span style="font-size:.68rem;color:var(--text-muted)">${pct}%</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── Error / util helpers ──────────────────────────────────────────────
+function showError(msg) {
+  $('errorBanner').textContent = '⚠️ ' + msg;
+  $('errorBanner').style.display = 'block';
+}
+function hideError() {
+  $('errorBanner').style.display = 'none';
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

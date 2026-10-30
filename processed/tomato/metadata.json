@@ -1,0 +1,160 @@
+{
+  "crop": "Tomato",
+  "rows": 1825,
+  "fields": [
+    "F00005",
+    "F00057",
+    "F00109",
+    "F00161",
+    "F00213"
+  ],
+  "per_field": {
+    "F00005": {
+      "rows": 365,
+      "date_min": "2024-12-01",
+      "date_max": "2025-11-30",
+      "soil_type": "Red Loam",
+      "district": "Imphal East"
+    },
+    "F00057": {
+      "rows": 365,
+      "date_min": "2024-12-01",
+      "date_max": "2025-11-30",
+      "soil_type": "Alluvial",
+      "district": "Imphal West"
+    },
+    "F00109": {
+      "rows": 365,
+      "date_min": "2024-12-01",
+      "date_max": "2025-11-30",
+      "soil_type": "Alluvial",
+      "district": "Thoubal"
+    },
+    "F00161": {
+      "rows": 365,
+      "date_min": "2024-12-01",
+      "date_max": "2025-11-30",
+      "soil_type": "Red Loam",
+      "district": "Bishnupur"
+    },
+    "F00213": {
+      "rows": 365,
+      "date_min": "2024-12-01",
+      "date_max": "2025-11-30",
+      "soil_type": "Red Loam",
+      "district": "Kakching"
+    }
+  },
+  "split": {
+    "train": [
+      "2024-12-01",
+      "2025-08-12"
+    ],
+    "val": [
+      "2025-08-13",
+      "2025-10-05"
+    ],
+    "test": [
+      "2025-10-06",
+      "2025-11-30"
+    ],
+    "train_end_idx": 255,
+    "val_end_idx": 309,
+    "total_days": 365
+  },
+  "feature_columns": [
+    "temperature",
+    "humidity",
+    "soil_moisture",
+    "ph",
+    "N",
+    "P",
+    "K",
+    "rainfall"
+  ],
+  "missing_after_filter": {
+    "temperature": 0,
+    "humidity": 0,
+    "soil_moisture": 0,
+    "ph": 0,
+    "N": 0,
+    "P": 0,
+    "K": 0,
+    "rainfall": 0
+  },
+  "thresholds": {
+    "temperature": {
+      "yes_p25": 23.725,
+      "yes_p50": 26.08,
+      "yes_p75": 28.3,
+      "no_p25": 24.17,
+      "no_p50": 26.56,
+      "no_p75": 28.475,
+      "overall_median": 26.18
+    },
+    "humidity": {
+      "yes_p25": 61.7725,
+      "yes_p50": 67.13,
+      "yes_p75": 72.025,
+      "no_p25": 59.775000000000006,
+      "no_p50": 67.27,
+      "no_p75": 71.755,
+      "overall_median": 67.15
+    },
+    "soil_moisture": {
+      "yes_p25": 95.0,
+      "yes_p50": 95.0,
+      "yes_p75": 95.0,
+      "no_p25": 3.0,
+      "no_p50": 3.0,
+      "no_p75": 9.5,
+      "overall_median": 95.0
+    },
+    "ph": {
+      "yes_p25": 5.59,
+      "yes_p50": 6.2,
+      "yes_p75": 6.82,
+      "no_p25": 5.525,
+      "no_p50": 6.32,
+      "no_p75": 6.95,
+      "overall_median": 6.2
+    },
+    "N": {
+      "yes_p25": 67.0,
+      "yes_p50": 81.0,
+      "yes_p75": 96.0,
+      "no_p25": 66.0,
+      "no_p50": 79.0,
+      "no_p75": 97.5,
+      "overall_median": 81.0
+    },
+    "P": {
+      "yes_p25": 27.0,
+      "yes_p50": 37.0,
+      "yes_p75": 47.0,
+      "no_p25": 29.5,
+      "no_p50": 38.0,
+      "no_p75": 46.5,
+      "overall_median": 37.0
+    },
+    "K": {
+      "yes_p25": 25.0,
+      "yes_p50": 38.0,
+      "yes_p75": 51.0,
+      "no_p25": 31.0,
+      "no_p50": 41.0,
+      "no_p75": 52.5,
+      "overall_median": 39.0
+    },
+    "rainfall": {
+      "yes_p25": 80.085,
+      "yes_p50": 116.005,
+      "yes_p75": 155.46499999999997,
+      "no_p25": 0.475,
+      "no_p50": 1.04,
+      "no_p75": 1.5150000000000001,
+      "overall_median": 103.81
+    }
+  },
+  "processed_csv": "C:\\Users\\Pavithra B\\OneDrive\\Desktop\\patch\\patchtst\\processed\\tomato\\tomato_processed.csv"
+}
